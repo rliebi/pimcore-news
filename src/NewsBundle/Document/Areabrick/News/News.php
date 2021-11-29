@@ -5,19 +5,23 @@ namespace NewsBundle\Document\Areabrick\News;
 use NewsBundle\Event\NewsBrickEvent;
 use NewsBundle\NewsEvents;
 use NewsBundle\Registry\PresetRegistry;
+use Pimcore\Extension\Document\Areabrick\EditableDialogBoxConfiguration;
+use Pimcore\Extension\Document\Areabrick\EditableDialogBoxInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Translation\TranslatorInterface;
 use NewsBundle\Configuration\Configuration;
 use NewsBundle\Manager\EntryTypeManager;
 use Pimcore\Extension\Document\Areabrick\AbstractTemplateAreabrick;
-use Pimcore\Model\Document\Tag\Area\Info;
+use Pimcore\Model\Document\Editable\Area\Info;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
+use Pimcore\Translation\Translator;
 
-class News extends AbstractTemplateAreabrick
+
+class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterface
 {
     /**
-     * @var Document
+     * @var Document\PageSnippet
      */
     protected $document;
 
@@ -32,7 +36,7 @@ class News extends AbstractTemplateAreabrick
     protected $entryTypeManager;
 
     /**
-     * @var TranslatorInterface
+     * @var Translator
      */
     protected $translator;
 
@@ -51,14 +55,14 @@ class News extends AbstractTemplateAreabrick
      *
      * @param Configuration            $configuration
      * @param EntryTypeManager         $entryTypeManager
-     * @param TranslatorInterface      $translator
+     * @param Translator      $translator
      * @param PresetRegistry           $presetRegistry
      * @param EventDispatcherInterface $eventDispatcher
      */
     public function __construct(
         Configuration $configuration,
         EntryTypeManager $entryTypeManager,
-        TranslatorInterface $translator,
+        Translator $translator,
         PresetRegistry $presetRegistry,
         EventDispatcherInterface $eventDispatcher
     ) {
@@ -78,10 +82,11 @@ class News extends AbstractTemplateAreabrick
     public function action(Info $info)
     {
         $this->document = $info->getDocument();
-
-        $view = $info->getView();
+        $isEditMode = $info->getEditable()->getEditmode();
+        $view = $info->getEditable();
         $fieldConfiguration = $this->setDefaultFieldValues();
-
+        /** @var Document\Editable\Select $formPresetSelection */
+        $layoutSelection = $this->getDocumentEditable($info->getDocument(), 'select', 'layouts');
         $isPresetMode = false;
         $subParams = [];
 
@@ -143,7 +148,7 @@ class News extends AbstractTemplateAreabrick
             }
 
             $event = new NewsBrickEvent($info, $querySettings);
-            $this->eventDispatcher->dispatch(NewsEvents::NEWS_BRICK_QUERY_BUILD, $event);
+            $this->eventDispatcher->dispatch($event, NewsEvents::NEWS_BRICK_QUERY_BUILD);
 
             $querySettings = $event->getQuerySettings();
             $additionalViewParams = $event->getAdditionalViewParams();
@@ -169,8 +174,13 @@ class News extends AbstractTemplateAreabrick
         ];
 
         $params = array_merge($systemParams, $subParams);
+//        dump($view); die();
+        $view->setConfig($fieldConfiguration);
+        $view->setValues($subParams);
+        $view->setValue('is_preset_mode', $isPresetMode);
         foreach ($params as $key => $value) {
-            $view->{$key} = $value;
+//            $view->{$key} = $value;
+            $info->setParam($key, $value);
         }
     }
 
@@ -222,10 +232,10 @@ class News extends AbstractTemplateAreabrick
         ];
 
         $adminSettings['category'] = ['value' => null, 'href_config' => $hrefConfig];
-        $categoryElement = $this->getDocumentField('href', 'category');
-        if (!$categoryElement->isEmpty()) {
-            $adminSettings['category']['value'] = $categoryElement->getElement();
-        }
+//        $categoryElement = $this->getDocumentField('manyToManyObjectRelation', 'category');
+//        if (!$categoryElement->isEmpty()) {
+//            $adminSettings['category']['value'] = $categoryElement->getElement();
+//        }
 
         //subcategories
         $adminSettings['include_subcategories'] = [
@@ -242,10 +252,10 @@ class News extends AbstractTemplateAreabrick
         ];
 
         $adminSettings['single_objects'] = ['value' => [], 'multi_href_config' => $multiHrefConfig];
-        $singleObjectsElement = $this->getDocumentField('multihref', 'singleObjects');
-        if (!$singleObjectsElement->isEmpty()) {
-            $adminSettings['single_objects']['value'] = $singleObjectsElement->getElements();
-        }
+//        $singleObjectsElement = $this->getDocumentField('multihref', 'singleObjects');
+//        if (!$singleObjectsElement->isEmpty()) {
+//            $adminSettings['single_objects']['value'] = $singleObjectsElement->getElements();
+//        }
 
         //show pagination
         $adminSettings['show_pagination'] = ['value' => (bool)$this->getDocumentField('checkbox', 'showPagination')->getData()];
@@ -425,20 +435,13 @@ class News extends AbstractTemplateAreabrick
      * @param $type
      * @param $inputName
      *
-     * @return null|Document\Tag
+     * @return Document\Editable\EditableInterface
      */
     private function getDocumentField($type, $inputName)
     {
-        return $this->getDocumentTag($this->document, $type, $inputName);
+        return $this->getDocumentEditable($this->document, $type, $inputName);
     }
 
-    /**
-     * @return bool
-     */
-    public function hasEditTemplate()
-    {
-        return true;
-    }
 
     /**
      * @return string
@@ -478,5 +481,75 @@ class News extends AbstractTemplateAreabrick
     public function getHtmlTagClose(Info $info)
     {
         return '';
+    }
+
+    public function getEditableDialogBoxConfiguration(
+        Document\Editable $area,
+        ?Info $info
+    ): EditableDialogBoxConfiguration {
+        $baseDocument = $area->getDocument();
+        $tabbedItems = [];
+        $listConfig = $this->configuration->getConfig('list');
+        $tabbedItems[] = [
+            'type'     => 'panel',
+            'title'    => $this->translator->trans('categories', [], 'admin'),
+            'defaults' => [
+                'cls' => 'form-builder-panel'
+            ],'items'    => [
+                [
+                    'type'   => 'relations',
+                    'name'   => 'category',
+                    'label'  => $this->translator->trans('categories', [], 'admin'),
+                    'config' =>  [
+                        'types'    => ['object'],
+                        'subtypes' => ['object' => ['object']],
+                        'classes'  => ['NewsCategory'],
+                        'width'    => '95%'
+                    ],
+                ],
+                [
+                    'type'   => 'checkbox',
+                    'name'   => 'include_subcategories',
+                    'label'  => $this->translator->trans('includeSubCategories', [], 'admin'),
+                    'config' => [
+                        'defaultValue' => null,
+                    ]
+                ],
+                [
+                    'type'   => 'relations',
+                    'name'   => 'single_objects',
+                    'label'  => $this->translator->trans('singleObjects', [], 'admin'),
+                    'config' =>  [
+                        'types'    => ['object'],
+                        'subtypes' => ['object' => ['object']],
+                        'classes'  => ['NewsEntry'],
+                        'width'    => '510px',
+                        'height'   => '150px'
+                    ],
+                ],
+                [
+                    'type'   => 'checkbox',
+                    'name'   => 'show_pagination',
+                    'label'  => $this->translator->trans('showPagination', [], 'admin'),
+                    'config' => [
+                        'defaultValue' => null,
+                    ]
+                ],
+                [
+                    'type' => 'select',
+                    'name' => 'layouts',
+                    'config' => [
+                        'store' => $this->getLayoutStore(),
+                        'value' => $listConfig['layouts']['default']
+                    ]
+                ]
+            ]
+        ];
+        $editableDialog = new EditableDialogBoxConfiguration();
+        $editableDialog->setItems([
+            'type'  => 'tabpanel',
+            'items' => $tabbedItems
+        ]);
+        return $editableDialog;
     }
 }

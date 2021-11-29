@@ -4,8 +4,11 @@ namespace NewsBundle\Twig\Extension;
 
 use NewsBundle\Generator\LinkGeneratorInterface;
 use NewsBundle\Model\EntryInterface;
+use Twig\Extension\AbstractExtension;
+use Twig\TwigFilter;
+use Twig\TwigFunction;
 
-class NewsExtension extends \Twig_Extension
+class NewsExtension extends AbstractExtension
 {
     /**
      * @var LinkGeneratorInterface
@@ -37,15 +40,15 @@ class NewsExtension extends \Twig_Extension
     public function getFunctions()
     {
         return [
-            new \Twig_Function(
+            new TwigFunction(
                 'news_entry_permalink',
                 [$this, 'generatePermalink']
             ),
-            new \Twig_Function(
+            new TwigFunction(
                 'news_entry_backlink',
                 [$this, 'generateBackLink']
             ),
-            new \Twig_Function(
+            new TwigFunction(
                 'news_thumbnail',
                 [$this, 'getNewsThumbnail']
             ),

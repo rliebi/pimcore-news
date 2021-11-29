@@ -2,12 +2,11 @@
 
 namespace NewsBundle\Model;
 
+use Doctrine\DBAL\Query\QueryBuilder;
 use NewsBundle\Exception\ImplementedByPimcoreException;
-use Pimcore\Db\ZendCompatibility\QueryBuilder;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Tool;
-use Zend\Paginator\Paginator;
 
 class Entry extends DataObject\Concrete implements EntryInterface
 {
@@ -49,7 +48,7 @@ class Entry extends DataObject\Concrete implements EntryInterface
      *
      * @param array $params
      *
-     * @return Paginator
+     * @return DataObject\NewsEntry\Listing
      * @throws \Exception
      */
     public static function getEntriesPaging(array $params = [])
@@ -125,12 +124,14 @@ class Entry extends DataObject\Concrete implements EntryInterface
 
         //allow listing modification.
         static::modifyListing($newsListing, $settings);
+        $newsListing->setOffset($settings['page'] * $settings['itemsPerPage']);
+        $newsListing->setLimit($settings['itemsPerPage']);
+        return $newsListing;
+//        $paginator = new Paginator($newsListing);
+//        $paginator->setCurrentPageNumber($settings['page']);
+//        $paginator->setItemCountPerPage($settings['itemsPerPage']);
 
-        $paginator = new Paginator($newsListing);
-        $paginator->setCurrentPageNumber($settings['page']);
-        $paginator->setItemCountPerPage($settings['itemsPerPage']);
-
-        return $paginator;
+//        return $paginator;
     }
 
     /**
@@ -152,16 +153,16 @@ class Entry extends DataObject\Concrete implements EntryInterface
 
         $newsListing->addConditionParam(sprintf('(
             CASE WHEN showEntryUntil IS NOT NULL
-                THEN 
+                THEN
                     showEntryUntil %1$s UNIX_TIMESTAMP(NOW())
                 ELSE
                     (CASE WHEN dateTo IS NOT NULL
-                        THEN 
-                            dateTo %1$s UNIX_TIMESTAMP(NOW()) 
+                        THEN
+                            dateTo %1$s UNIX_TIMESTAMP(NOW())
                         ELSE
                             (CASE WHEN date IS NOT NULL
-                                THEN 
-                                    date %1$s UNIX_TIMESTAMP(NOW())  
+                                THEN
+                                    date %1$s UNIX_TIMESTAMP(NOW())
                                 ELSE
                                     FALSE
                                 END
@@ -183,12 +184,13 @@ class Entry extends DataObject\Concrete implements EntryInterface
      */
     public static function addCategorySelectorToQuery($newsListing, $categories = null, $settings = [])
     {
-        $newsListing->onCreateQuery(function (QueryBuilder $query) use ($newsListing, $categories, $settings) {
+        $newsListing->onCreateQueryBuilder(function (QueryBuilder $query) use ($newsListing, $categories, $settings) {
             if (!empty($categories)) {
                 $query->join(
-                    ['relations' => 'object_relations_' . $newsListing->getClassId()],
+                    '',
+                    'object_relations_' . $newsListing->getClassId(),
+                    'relations',
                     'relations.src_id = oo_id',
-                    ''
                 );
             }
 
@@ -296,7 +298,7 @@ class Entry extends DataObject\Concrete implements EntryInterface
     /**
      * {@inheritdoc}
      */
-    public function getName($language = null)
+    public function getName($language = null): ?string
     {
         throw new ImplementedByPimcoreException(__CLASS__, __METHOD__);
     }
@@ -304,7 +306,7 @@ class Entry extends DataObject\Concrete implements EntryInterface
     /**
      * {@inheritdoc}
      */
-    public function getLead($language = null)
+    public function getLead($language = null): ?string
     {
         throw new ImplementedByPimcoreException(__CLASS__, __METHOD__);
     }
@@ -312,7 +314,7 @@ class Entry extends DataObject\Concrete implements EntryInterface
     /**
      * {@inheritdoc}
      */
-    public function getDescription($language = null)
+    public function getDescription($language = null): ?string
     {
         throw new ImplementedByPimcoreException(__CLASS__, __METHOD__);
     }

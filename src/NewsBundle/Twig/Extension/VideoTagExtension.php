@@ -3,9 +3,11 @@
 namespace NewsBundle\Twig\Extension;
 
 use Pimcore\Model\Asset;
-use Pimcore\Model\Document\Tag\Video;
+use Pimcore\Model\Document\Editable\Video;
+use Twig\Extension\AbstractExtension;
+use Twig\TwigFunction;
 
-class VideoTagExtension extends \Twig_Extension
+class VideoTagExtension extends AbstractExtension
 {
     /**
      * @return array
@@ -13,7 +15,7 @@ class VideoTagExtension extends \Twig_Extension
     public function getFunctions()
     {
         return [
-            new \Twig_SimpleFunction('news_video_tag', [$this, 'generateVideoTag'], [
+            new TwigFunction('news_video_tag', [$this, 'generateVideoTag'], [
                 'is_safe' => ['html']
             ])
         ];
@@ -50,14 +52,14 @@ class VideoTagExtension extends \Twig_Extension
 
         $video->setOptions($videoOptions);
 
-        $video->type = $videoType->getType();
-        $video->id = ($videoData instanceof Asset) ? $videoData->getId() : $videoData;
-        $video->title = $videoType->getTitle();
-        $video->description = $videoType->getDescription();
+//        $video->type = $videoType->getType();
+//        $video->id = ($videoData instanceof Asset) ? $videoData->getId() : $videoData;
+//        $video->title = $videoType->getTitle();
+//        $video->description = $videoType->getDescription();
 
-        if ($videoType->getPoster()) {
-            $video->poster = $videoType->getPoster()->getId();
-        }
+//        if ($videoType->getPoster()) {
+//            $video->poster = $videoType->getPoster()->getId();
+//        }
 
         $html = $video->frontend();
 

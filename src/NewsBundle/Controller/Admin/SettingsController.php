@@ -22,7 +22,7 @@ class SettingsController extends AdminController
         $entryTypeManager = $this->get(EntryTypeManager::class);
 
         /** @var Translator $translator */
-        $translator = $this->get('pimcore.translator');
+        $translator = $this->get('translator');
 
         $newsObject = DataObject::getById(intval($request->get('objectId')));
 

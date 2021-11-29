@@ -2,8 +2,8 @@
 
 namespace NewsBundle\Event;
 
-use Pimcore\Model\Document\Tag\Area\Info;
-use Symfony\Component\EventDispatcher\Event;
+use Pimcore\Model\Document\Editable\Area\Info;
+use Symfony\Contracts\EventDispatcher\Event;
 
 class NewsBrickEvent extends Event
 {

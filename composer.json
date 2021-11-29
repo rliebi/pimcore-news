@@ -2,14 +2,14 @@
     "name": "dachcom-digital/news",
     "type": "pimcore-bundle",
     "license": "GPL-3.0+",
-    "description": "Pimcore 5.x News",
+    "description": "Pimcore News",
     "keywords": ["pimcore", "news"],
     "homepage": "https://github.com/dachcom-digital/pimcore-news",
     "authors": [
         {
             "name": "DACHCOM.DIGITAL Stefan Hagspiel",
             "email": "shagspiel@dachcom.ch",
-            "homepage": "http://www.dachcom.com/",
+            "homepage": "https://www.dachcom.com/",
             "role": "Developer"
         }
     ],

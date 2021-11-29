@@ -1,6 +1,8 @@
 {% block news_list_wrapper %}
 
     {% block news_list_content %}
+{#        {{ dump() }}#}
+{#        {{ preset_name }}#}
         {% if is_preset_mode == true %}
             {% include '@News/List/Preset/' ~ preset_name ~ '.html.twig' %}
         {% else %}

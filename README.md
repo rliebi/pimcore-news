@@ -2,7 +2,7 @@
 Pimcore News Bundle. It's also possible to generate [custom entry types](docs/20_EntryTypes.md) like Press or Event.
 
 ## Requirements
-* Pimcore 5.
+* Pimcore 10.2
 
 #### Pimcore 4 
 Get the Pimcore4 Version [here](https://github.com/dachcom-digital/pimcore-news/tree/pimcore4).
@@ -14,8 +14,8 @@ Get the Pimcore4 Version [here](https://github.com/dachcom-digital/pimcore-news/
 2. Activate & install it through backend
 
 ```json
-"require" : {
-    "dachcom-digital/news" : "~2.2.0"
+"require": {
+    "dachcom-digital/news" : "~3.0.0"
 }
 ```
 

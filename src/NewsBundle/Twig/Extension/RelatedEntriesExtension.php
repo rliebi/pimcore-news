@@ -4,8 +4,10 @@ namespace NewsBundle\Twig\Extension;
 
 use NewsBundle\Generator\RelatedEntriesGeneratorInterface;
 use NewsBundle\Model\EntryInterface;
+use Twig\Extension\AbstractExtension;
+use Twig\TwigFunction;
 
-class RelatedEntriesExtension extends \Twig_Extension
+class RelatedEntriesExtension extends AbstractExtension
 {
     /**
      * @var RelatedEntriesGeneratorInterface
@@ -28,7 +30,7 @@ class RelatedEntriesExtension extends \Twig_Extension
     public function getFunctions()
     {
         return [
-            new \Twig_Function(
+            new TwigFunction(
                 'news_related_entries',
                 [$this, 'generateRelatedEntries']
             ),

@@ -1,2 +1,12 @@
 imports:
     - { resource: services/*.yml }
+services:
+    NewsBundle\Controller\:
+        resource: '../../Controller'
+        public: true
+        tags: [ 'controller.service_arguments' ]
+        calls:
+            - [setContainer, ['@service_container']]
+#    pimcore.templating:
+#        alias: twig
+#        public: true

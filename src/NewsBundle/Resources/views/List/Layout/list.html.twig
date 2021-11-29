@@ -1,6 +1,6 @@
 <div class="{{ main_classes }} layout-list">
 
-    {% if paginator.getTotalItemCount() > 0 %}
+    {% if paginator.count > 0 %}
 
         {% include '@News/List/Block/entries.html.twig' %}
 

@@ -11,6 +11,7 @@ use Pimcore\Model\Staticroute;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Tool;
+use Pimcore\Translation\Translator;
 use Symfony\Component\Translation\TranslatorInterface;
 
 class EntryTypeManager
@@ -26,7 +27,7 @@ class EntryTypeManager
     protected $routeData = [];
 
     /**
-     * @var TranslatorInterface
+     * @var Translator
      */
     protected $translator;
 
@@ -49,14 +50,14 @@ class EntryTypeManager
      * EntryTypeManager constructor.
      *
      * @param Configuration       $configuration
-     * @param TranslatorInterface $translator
+     * @param Translator $translator
      * @param SiteResolver        $siteResolver
      * @param EditmodeResolver    $editmodeResolver
      * @param DocumentResolver    $documentResolver
      */
     public function __construct(
         Configuration $configuration,
-        TranslatorInterface $translator,
+        Translator $translator,
         SiteResolver $siteResolver,
         EditmodeResolver $editmodeResolver,
         DocumentResolver $documentResolver

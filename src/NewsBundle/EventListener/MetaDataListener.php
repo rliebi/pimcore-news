@@ -5,11 +5,12 @@ namespace NewsBundle\EventListener;
 use NewsBundle\Generator\HeadMetaGeneratorInterface;
 use NewsBundle\Model\EntryInterface;
 use Pimcore\Model\DataObject\NewsEntry;
-use Pimcore\Templating\Helper\HeadMeta;
-use Pimcore\Templating\Helper\HeadTitle;
-use Pimcore\Templating\Helper\Placeholder\Container;
+use Pimcore\Twig\Extension\Templating\HeadMeta;
+use Pimcore\Twig\Extension\Templating\HeadTitle;
+use Pimcore\Twig\Extension\Templating\Placeholder\Container;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 class MetaDataListener implements EventSubscriberInterface
@@ -55,9 +56,9 @@ class MetaDataListener implements EventSubscriberInterface
     }
 
     /**
-     * @param GetResponseEvent $event
+     * @param RequestEvent $event
      */
-    public function onKernelRequest(GetResponseEvent $event)
+    public function onKernelRequest(RequestEvent $event)
     {
         $request = $event->getRequest();
 
