@@ -7,6 +7,6 @@ services:
         tags: [ 'controller.service_arguments' ]
         calls:
             - [setContainer, ['@service_container']]
-#    pimcore.templating:
-#        alias: twig
-#        public: true
+    pimcore.templating:
+        alias: pimcore.templating.engine.delegating
+        public: true

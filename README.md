@@ -18,6 +18,9 @@ Get the Pimcore4 Version [here](https://github.com/dachcom-digital/pimcore-news/
     "dachcom-digital/news" : "~3.0.0"
 }
 ```
+## Version Caviats for this version
+- Preset Mode is not yet working
+- Pagination is not yet working
 
 ## Important to know
 - The detail url is based on the title for each language. If the detail url field is empty, the title will be transformed to a valid url slug.

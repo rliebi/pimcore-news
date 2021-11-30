@@ -2,19 +2,19 @@
 
 namespace NewsBundle\Document\Areabrick\News;
 
+use FormBuilderBundle\Manager\TemplateManager;
+use NewsBundle\Configuration\Configuration;
 use NewsBundle\Event\NewsBrickEvent;
+use NewsBundle\Manager\EntryTypeManager;
 use NewsBundle\NewsEvents;
 use NewsBundle\Registry\PresetRegistry;
+use Pimcore\Extension\Document\Areabrick\AbstractTemplateAreabrick;
 use Pimcore\Extension\Document\Areabrick\EditableDialogBoxConfiguration;
 use Pimcore\Extension\Document\Areabrick\EditableDialogBoxInterface;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Translation\TranslatorInterface;
-use NewsBundle\Configuration\Configuration;
-use NewsBundle\Manager\EntryTypeManager;
-use Pimcore\Extension\Document\Areabrick\AbstractTemplateAreabrick;
-use Pimcore\Model\Document\Editable\Area\Info;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
+use Pimcore\Model\Document\Editable\Area\Info;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Pimcore\Translation\Translator;
 
 
@@ -49,14 +49,15 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
      * @var EventDispatcherInterface
      */
     protected $eventDispatcher;
+    protected TemplateManager $templateManager;
 
     /**
      * News constructor.
      *
-     * @param Configuration            $configuration
-     * @param EntryTypeManager         $entryTypeManager
-     * @param Translator      $translator
-     * @param PresetRegistry           $presetRegistry
+     * @param Configuration $configuration
+     * @param EntryTypeManager $entryTypeManager
+     * @param Translator $translator
+     * @param PresetRegistry $presetRegistry
      * @param EventDispatcherInterface $eventDispatcher
      */
     public function __construct(
@@ -64,6 +65,7 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
         EntryTypeManager $entryTypeManager,
         Translator $translator,
         PresetRegistry $presetRegistry,
+        TemplateManager $templateManager,
         EventDispatcherInterface $eventDispatcher
     ) {
         $this->configuration = $configuration;
@@ -71,6 +73,7 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
         $this->translator = $translator;
         $this->presetRegistry = $presetRegistry;
         $this->eventDispatcher = $eventDispatcher;
+        $this->templateManager = $templateManager;
     }
 
     /**
@@ -84,255 +87,97 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
         $this->document = $info->getDocument();
         $isEditMode = $info->getEditable()->getEditmode();
         $view = $info->getEditable();
-        $fieldConfiguration = $this->setDefaultFieldValues();
-        /** @var Document\Editable\Select $formPresetSelection */
-        $layoutSelection = $this->getDocumentEditable($info->getDocument(), 'select', 'layouts');
         $isPresetMode = false;
-        $subParams = [];
+        $latest = $this->getDocumentEditable($info->getDocument(), 'checkbox', 'latest');
+//        $showPagination = false && $this->getDocumentEditable($info->getDocument(), 'checkbox', 'show_pagination')->getData();
+        $showPagination = false;
+        $layout = $this->getDocumentEditable($info->getDocument(), 'select', 'layout')->getData();
+        $entryType = $this->getDocumentEditable($info->getDocument(), 'select', 'entryType');
 
         //check if preset has been selected at first
-        if ($this->isPresetMode($fieldConfiguration)) {
-            $isPresetMode = true;
-            $preset = $this->presetRegistry->get($fieldConfiguration['presets']['value']);
-            $preset->setInfo($info);
-            $subParams['preset_name'] = $fieldConfiguration['presets']['value'];
-            $subParams['preset'] = [];
-            foreach ($preset->getViewParams() as $key => $param) {
-                $subParams['preset'][$key] = $param;
-            }
-        } else {
+
 
             $querySettings = [];
-            $querySettings['category'] = $fieldConfiguration['category']['value'];
-            $querySettings['includeSubCategories'] = $fieldConfiguration['include_subcategories']['value'];
-            $querySettings['singleObjects'] = $fieldConfiguration['single_objects']['value'];
-            $querySettings['entryType'] = $fieldConfiguration['entry_types']['value'];
-            $querySettings['offset'] = $fieldConfiguration['offset']['value'];
-
-            //set limit
-            $limit = $fieldConfiguration['max_items']['value'];
-
-            //set pagination
-            $calculatedItemsPerPage = $fieldConfiguration['paginate']['items_per_page']['value'];
-
-            if ($calculatedItemsPerPage > $limit) {
-                $calculatedItemsPerPage = $limit;
-            }
-
-            $querySettings['itemsPerPage'] = $calculatedItemsPerPage;
-
-            //set paged
-            $querySettings['page'] = (int)$info->getRequest()->query->get('page');
-
-            //only latest
-            if ($fieldConfiguration['latest']['value'] === true) {
+//            $querySettings['category'] = $fieldConfiguration['category']['value'];
+//            $querySettings['includeSubCategories'] = $fieldConfiguration['include_subcategories']['value'];
+//            $querySettings['singleObjects'] = $fieldConfiguration['single_objects']['value'];
+//            $querySettings['entryType'] = $fieldConfiguration['entry_types']['value'];
+//            $querySettings['offset'] = $fieldConfiguration['offset']['value'];
+//
+//            //set limit
+//            $limit = $fieldConfiguration['max_items']['value'];
+//
+//            //set pagination
+//            $calculatedItemsPerPage = $fieldConfiguration['paginate']['items_per_page']['value'];
+//
+//            if ($calculatedItemsPerPage > $limit) {
+//                $calculatedItemsPerPage = $limit;
+//            }
+//
+//            $querySettings['itemsPerPage'] = $calculatedItemsPerPage;
+//
+//            //set paged
+//            $querySettings['page'] = (int)$info->getRequest()->query->get('page');
+//
+//            //only latest
+            if ($latest->getData() === true) {
                 $querySettings['onlyLatest'] = true;
             }
+//
+//            //set sort
+//            $querySettings['sort']['field'] = $fieldConfiguration['sort_by']['value'];
+//            $querySettings['sort']['dir'] = $fieldConfiguration['order_by']['value'];
+//
+//            //set time range
+//            $querySettings['timeRange'] = $fieldConfiguration['time_range']['value'];
+//
+//            $mainClasses = [];
+//            $mainClasses[] = 'area';
+            $mainClasses[] = 'news-'.$layout;
 
-            //set sort
-            $querySettings['sort']['field'] = $fieldConfiguration['sort_by']['value'];
-            $querySettings['sort']['dir'] = $fieldConfiguration['order_by']['value'];
-
-            //set time range
-            $querySettings['timeRange'] = $fieldConfiguration['time_range']['value'];
-
-            $mainClasses = [];
-            $mainClasses[] = 'area';
-            $mainClasses[] = 'news-' . $fieldConfiguration['layouts']['value'];
-
-            if ($fieldConfiguration['entry_types']['value'] !== 'all') {
-                $mainClasses[] = 'entry-type-' . str_replace([
+            if ($layout !== 'all') {
+                $mainClasses[] = 'entry-type-'.str_replace([
                         '_',
-                        ' '
-                    ], ['-'], strtolower($fieldConfiguration['entry_types']['value']));
+                        ' ',
+                    ], ['-'], strtolower($layout));
             }
-
-            $event = new NewsBrickEvent($info, $querySettings);
-            $this->eventDispatcher->dispatch($event, NewsEvents::NEWS_BRICK_QUERY_BUILD);
-
-            $querySettings = $event->getQuerySettings();
-            $additionalViewParams = $event->getAdditionalViewParams();
-
+//
+//            $event = new NewsBrickEvent($info, $querySettings);
+//            $this->eventDispatcher->dispatch($event, NewsEvents::NEWS_BRICK_QUERY_BUILD);
+//
+//            $querySettings = $event->getQuerySettings();
+//            $additionalViewParams = $event->getAdditionalViewParams();
+//
             $newsObjects = DataObject\NewsEntry::getEntriesPaging($querySettings);
-
+//
             $subParams = [
-                'main_classes'           => implode(' ', $mainClasses),
-                'category'               => $fieldConfiguration['category']['value'],
-                'show_pagination'        => $fieldConfiguration['show_pagination']['value'],
-                'entry_type'             => $fieldConfiguration['entry_types']['value'],
-                'layout_name'            => $fieldConfiguration['layouts']['value'],
-                'paginator'              => $newsObjects,
-                'additional_view_params' => $additionalViewParams,
-                'query_settings'         => $querySettings
+                'main_classes' => implode(' ', $mainClasses),
+                'is_preset_mode' => false,
+//                'category' => $ca,
+                'show_pagination' => $showPagination,
+//                'entry_type' => $fieldConfiguration['entry_types']['value'],
+                'layout_name' => $layout,
+                'paginator' => $newsObjects,
+//                'additional_view_params' => $additionalViewParams,
+                'query_settings' => $querySettings,
             ];
-        }
-
-        $systemParams = [
-            'is_preset_mode' => $isPresetMode,
-            //system/editmode related
-            'config'         => $fieldConfiguration
-        ];
-
-        $params = array_merge($systemParams, $subParams);
-//        dump($view); die();
-        $view->setConfig($fieldConfiguration);
-        $view->setValues($subParams);
-        $view->setValue('is_preset_mode', $isPresetMode);
-        foreach ($params as $key => $value) {
+//
+//
+//        $systemParams = [
+//            'is_preset_mode' => $isPresetMode,
+//            //system/editmode related
+//            'config' => $fieldConfiguration,
+//        ];
+//
+//        $params = array_merge($systemParams, $subParams);
+////        dump($view); die();
+////        $view->setConfig($fieldConfiguration);
+//        $view->setValues($subParams);
+//        $view->setValue('is_preset_mode', $isPresetMode);
+        foreach ($subParams as $key => $value) {
 //            $view->{$key} = $value;
             $info->setParam($key, $value);
         }
-    }
-
-    /**
-     * @param $fieldConfiguration
-     *
-     * @return bool
-     */
-    private function isPresetMode($fieldConfiguration)
-    {
-        return $fieldConfiguration['presets']['value'] !== 'none'
-            && $this->presetRegistry->has($fieldConfiguration['presets']['value']);
-    }
-
-    /**
-     * Set Configuration and set defaults to view fields if they're empty.
-     */
-    private function setDefaultFieldValues()
-    {
-        $adminSettings = [];
-
-        $listConfig = $this->configuration->getConfig('list');
-
-        //set presets
-        $presetData = $this->getPresetsStore();
-        $adminSettings['presets'] = [
-            'store' => $presetData['store'],
-            'value' => 'none',
-            'info'  => $presetData['info']
-        ];
-
-        $presetElement = $this->getDocumentField('select', 'presets');
-        // if value is empty or service has been removed, reset element.
-        if ($presetElement->isEmpty() || count($presetData['store']) === 1) {
-            $presetElement->setDataFromResource($adminSettings['presets']['value']);
-        } else {
-            $adminSettings['presets']['value'] = $presetElement->getData();
-        }
-
-        //set latest
-        $adminSettings['latest'] = ['value' => (bool)$this->getDocumentField('checkbox', 'latest')->getData()];
-
-        //category
-        $hrefConfig = [
-            'types'    => ['object'],
-            'subtypes' => ['object' => ['object']],
-            'classes'  => ['NewsCategory'],
-            'width'    => '95%'
-        ];
-
-        $adminSettings['category'] = ['value' => null, 'href_config' => $hrefConfig];
-//        $categoryElement = $this->getDocumentField('manyToManyObjectRelation', 'category');
-//        if (!$categoryElement->isEmpty()) {
-//            $adminSettings['category']['value'] = $categoryElement->getElement();
-//        }
-
-        //subcategories
-        $adminSettings['include_subcategories'] = [
-            'value' => (bool)$this->getDocumentField('checkbox', 'includeSubCategories')->getData()
-        ];
-
-        //single objects
-        $multiHrefConfig = [
-            'types'    => ['object'],
-            'subtypes' => ['object' => ['object']],
-            'classes'  => ['NewsEntry'],
-            'width'    => '510px',
-            'height'   => '150px'
-        ];
-
-        $adminSettings['single_objects'] = ['value' => [], 'multi_href_config' => $multiHrefConfig];
-//        $singleObjectsElement = $this->getDocumentField('multihref', 'singleObjects');
-//        if (!$singleObjectsElement->isEmpty()) {
-//            $adminSettings['single_objects']['value'] = $singleObjectsElement->getElements();
-//        }
-
-        //show pagination
-        $adminSettings['show_pagination'] = ['value' => (bool)$this->getDocumentField('checkbox', 'showPagination')->getData()];
-
-        //set layout
-        $adminSettings['layouts'] = ['store' => $this->getLayoutStore(), 'value' => $listConfig['layouts']['default']];
-        $layoutElement = $this->getDocumentField('select', 'layout');
-        if ($layoutElement->isEmpty()) {
-            $layoutElement->setDataFromResource($adminSettings['layouts']['value']);
-        } else {
-            $adminSettings['layouts']['value'] = $layoutElement->getData();
-        }
-
-        //set items per page
-        $adminSettings['paginate'] = ['items_per_page' => ['value' => $listConfig['paginate']['items_per_page']]];
-        $itemsPerPageElement = $this->getDocumentField('numeric', 'itemsPerPage');
-        if ($itemsPerPageElement->isEmpty()) {
-            $itemsPerPageElement->setDataFromResource($adminSettings['paginate']['items_per_page']['value']);
-        } else {
-            $adminSettings['paginate']['items_per_page']['value'] = (int)$itemsPerPageElement->getData();
-        }
-
-        //set limit
-        $adminSettings['max_items'] = ['value' => $listConfig['max_items']];
-        $limitElement = $this->getDocumentField('numeric', 'limit');
-        if ($limitElement->isEmpty() || $itemsPerPageElement->getData() < 0) {
-            $limitElement->setDataFromResource($adminSettings['max_items']['value']);
-        } else {
-            $adminSettings['max_items']['value'] = (int)$limitElement->getData();
-        }
-
-        //set offset
-        $adminSettings['offset'] = ['value' => 0];
-        $offsetElement = $this->getDocumentField('numeric', 'offset');
-        if ($offsetElement->isEmpty()) {
-            $offsetElement->setDataFromResource($adminSettings['offset']['value']);
-        } else {
-            $adminSettings['offset']['value'] = (int)$offsetElement->getData();
-        }
-
-        //set sort by
-        $adminSettings['sort_by'] = ['store' => $this->getSortByStore(), 'value' => $listConfig['sort_by']];
-        $sortByElement = $this->getDocumentField('select', 'sortby');
-        if ($sortByElement->isEmpty()) {
-            $sortByElement->setDataFromResource($adminSettings['sort_by']['value']);
-        } else {
-            $adminSettings['sort_by']['value'] = $sortByElement->getData();
-        }
-
-        //set order by
-        $adminSettings['order_by'] = ['store' => $this->getOrderByStore(), 'value' => $listConfig['order_by']];
-        $orderByElement = $this->getDocumentField('select', 'orderby');
-        if ($orderByElement->isEmpty()) {
-            $orderByElement->setDataFromResource($adminSettings['order_by']['value']);
-        } else {
-            $adminSettings['order_by']['value'] = $orderByElement->getData();
-        }
-
-        //set time range
-        $adminSettings['time_range'] = ['store' => $this->getTimeRangeStore(), 'value' => $listConfig['time_range']];
-        $timeRangeElement = $this->getDocumentField('select', 'timeRange');
-        if ($timeRangeElement->isEmpty()) {
-            $timeRangeElement->setDataFromResource($adminSettings['time_range']['value']);
-        } else {
-            $adminSettings['time_range']['value'] = $timeRangeElement->getData();
-        }
-
-        //set entry type
-        $adminSettings['entry_types'] = ['store' => $this->getEntryTypeStore(), 'value' => 'all'];
-        $entryTypeElement = $this->getDocumentField('select', 'entryType');
-        if ($entryTypeElement->isEmpty()) {
-            $entryTypeElement->setDataFromResource($adminSettings['entry_types']['value']);
-        } else {
-            $adminSettings['entry_types']['value'] = $entryTypeElement->getData();
-        }
-
-        return $adminSettings;
     }
 
     /**
@@ -342,9 +187,9 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
     {
         $data = [
             'store' => [
-                ['none', $this->translator->trans('news.no_preset', [], 'admin')]
+                ['none', $this->translator->trans('news.no_preset', [], 'admin')],
             ],
-            'info'  => []
+            'info' => [],
         ];
 
         $services = $this->presetRegistry->getList();
@@ -399,7 +244,7 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
     {
         return [
             ['desc', $this->translator->trans('news.order_by.descending', [], 'admin')],
-            ['asc', $this->translator->trans('news.order_by.ascending', [], 'admin')]
+            ['asc', $this->translator->trans('news.order_by.ascending', [], 'admin')],
         ];
     }
 
@@ -411,7 +256,7 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
         return [
             ['all', $this->translator->trans('news.time_range.all_entries', [], 'admin')],
             ['current', $this->translator->trans('news.time_range.current_entries', [], 'admin')],
-            ['past', $this->translator->trans('news.time_range.past_entries', [], 'admin')]
+            ['past', $this->translator->trans('news.time_range.past_entries', [], 'admin')],
         ];
     }
 
@@ -421,7 +266,7 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
     private function getEntryTypeStore()
     {
         $store = [
-            ['all', $this->translator->trans('news.entry_type.all', [], 'admin')]
+            ['all', $this->translator->trans('news.entry_type.all', [], 'admin')],
         ];
 
         foreach ($this->entryTypeManager->getTypesFromConfig() as $typeKey => $typeData) {
@@ -432,16 +277,15 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
     }
 
     /**
-     * @param $type
-     * @param $inputName
+     * @param $fieldConfiguration
      *
-     * @return Document\Editable\EditableInterface
+     * @return bool
      */
-    private function getDocumentField($type, $inputName)
+    private function isPresetMode($fieldConfiguration)
     {
-        return $this->getDocumentEditable($this->document, $type, $inputName);
+        return $fieldConfiguration['presets']['value'] !== 'none'
+            && $this->presetRegistry->has($fieldConfiguration['presets']['value']);
     }
-
 
     /**
      * @return string
@@ -487,69 +331,175 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
         Document\Editable $area,
         ?Info $info
     ): EditableDialogBoxConfiguration {
-        $baseDocument = $area->getDocument();
         $tabbedItems = [];
+        $tabbedItems = $this->getSingleElement($tabbedItems);
+        $tabbedItems = $this->getCategoryTab($tabbedItems);
+        $tabbedItems = $this->getPaginationTab($tabbedItems);
+        $tabbedItems = $this->getSortingTab($tabbedItems);
+
+        $editableDialog = new EditableDialogBoxConfiguration();
+        $editableDialog->setItems([
+            'type' => 'tabpanel',
+            'items' => $tabbedItems,
+        ]);
+        $editableDialog->setReloadOnClose(true);
+        $editableDialog->setWidth(600);
+        $editableDialog->setHeight(450);
+        return $editableDialog;
+    }
+
+    public function getSingleElement(array $tabbedItems): array
+    {
         $listConfig = $this->configuration->getConfig('list');
         $tabbedItems[] = [
-            'type'     => 'panel',
-            'title'    => $this->translator->trans('categories', [], 'admin'),
-            'defaults' => [
-                'cls' => 'form-builder-panel'
-            ],'items'    => [
+            'type' => 'panel',
+            'title' => $this->translator->trans('news.entries', [], 'admin'),
+            'items' => [
                 [
-                    'type'   => 'relations',
-                    'name'   => 'category',
-                    'label'  => $this->translator->trans('categories', [], 'admin'),
-                    'config' =>  [
-                        'types'    => ['object'],
-                        'subtypes' => ['object' => ['object']],
-                        'classes'  => ['NewsCategory'],
-                        'width'    => '95%'
-                    ],
-                ],
-                [
-                    'type'   => 'checkbox',
-                    'name'   => 'include_subcategories',
-                    'label'  => $this->translator->trans('includeSubCategories', [], 'admin'),
+                    'type' => 'checkbox',
+                    'name' => 'latest',
+                    'label' => $this->translator->trans('news.show_only_top_entries', [], 'admin'),
                     'config' => [
                         'defaultValue' => null,
-                    ]
-                ],
-                [
-                    'type'   => 'relations',
-                    'name'   => 'single_objects',
-                    'label'  => $this->translator->trans('singleObjects', [], 'admin'),
-                    'config' =>  [
-                        'types'    => ['object'],
-                        'subtypes' => ['object' => ['object']],
-                        'classes'  => ['NewsEntry'],
-                        'width'    => '510px',
-                        'height'   => '150px'
                     ],
-                ],
-                [
-                    'type'   => 'checkbox',
-                    'name'   => 'show_pagination',
-                    'label'  => $this->translator->trans('showPagination', [], 'admin'),
-                    'config' => [
-                        'defaultValue' => null,
-                    ]
                 ],
                 [
                     'type' => 'select',
-                    'name' => 'layouts',
+                    'name' => 'layout',
+                    'label' => $this->translator->trans('news.show_only_top_entries', [], 'admin'),
                     'config' => [
                         'store' => $this->getLayoutStore(),
-                        'value' => $listConfig['layouts']['default']
-                    ]
-                ]
-            ]
+                        'defaultValue' => $listConfig['layouts']['default'],
+                    ],
+                ],
+                [
+                    'type' => 'select',
+                    'name' => 'entryType',
+                    'label' => $this->translator->trans('news.entry_type', [], 'admin'),
+                    'config' => ['store' => $this->getEntryTypeStore(), 'defaultValue' => 'all'],
+                ],
+            ],
         ];
-        $editableDialog = new EditableDialogBoxConfiguration();
-        $editableDialog->setItems([
-            'type'  => 'tabpanel',
-            'items' => $tabbedItems
-        ]);
-        return $editableDialog;
+
+        return $tabbedItems;
+    }
+
+    public function getCategoryTab(array $tabbedItems): array
+    {
+        $tabbedItems[] = [
+            'type' => 'panel',
+            'title' => $this->translator->trans('news.categories', [], 'admin'),
+            'items' => [
+                [
+                    'type' => 'relations',
+                    'name' => 'category',
+                    'label' => $this->translator->trans('news.categories', [], 'admin'),
+                    'config' => [
+                        'types' => ['object'],
+                        'subtypes' => ['object' => ['object']],
+                        'classes' => ['NewsCategory'],
+                        'width' => '95%',
+                    ],
+                ],
+                [
+                    'type' => 'checkbox',
+                    'name' => 'include_subcategories',
+                    'label' => $this->translator->trans('news.include_subcategories', [], 'admin'),
+                    'config' => [
+                        'defaultValue' => null,
+                    ],
+                ],
+            ],
+        ];
+
+        return $tabbedItems;
+    }
+
+    public function getPaginationTab(array $tabbedItems): array
+    {
+        $listConfig = $this->configuration->getConfig('list');
+        $tabbedItems[] = [
+            'type' => 'panel',
+//            'title' => $this->translator->trans('news.list', [], 'admin'),
+            'title' => 'news.list',
+            'items' => [
+                [
+                    'type' => 'text',
+                    'label' => 'test'
+                ],
+                [
+                    'type' => 'checkbox',
+                    'name' => 'show_pagination',
+//                    'label' => $this->translator->trans('news.show_pagination', [], 'admin'),
+                    'label' => 'news.show_pagination',
+                    'config' => [
+                        'disabled' => true,
+                        'defaultValue' => null,
+                    ],
+                ],
+                [
+                    'type' => 'numeric',
+                    'name' => 'max_items',
+                    'label' => $this->translator->trans('news.maximum_number_of_entries', [], 'admin'),
+                    'config' => [
+                        'defaultValue' => $listConfig['max_items'],
+
+                    ],
+                ],
+                [
+                    'type' => 'numeric',
+                    'name' => 'offset',
+                    'label' => $this->translator->trans('news.offset', [], 'admin'),
+                ],
+
+            ],
+        ];
+
+        return $tabbedItems;
+    }
+
+    public function getSortingTab(array $tabbedItems): array
+    {
+        $listConfig = $this->configuration->getConfig('list');
+        $tabbedItems[] = [
+            'type' => 'panel',
+            'title' => $this->translator->trans('news.sorting', [], 'admin'),
+            'items' => [
+                [
+                    'type' => 'select',
+                    'name' => 'order_by',
+                    'label' => $this->translator->trans('news.order_by', [], 'admin'),
+                    'config' => [
+                        'store' => $this->getOrderByStore(),
+                        'defaultValue' => $listConfig['order_by'],
+                    ],
+                ],
+                [
+                    'type' => 'select',
+                    'name' => 'sort_by',
+                    'label' => $this->translator->trans('news.sort_by', [], 'admin'),
+                    'config' => [
+                        'store' => $this->getSortByStore(),
+                        'defaultValue' => $listConfig['sort_by'],
+                    ],
+                ],
+                [
+                    'type' => 'select',
+                    'name' => 'time_range',
+                    'label' => $this->translator->trans('news.time_range', [], 'admin'),
+                    'config' => [
+                        'store' => $this->getTimeRangeStore(),
+                        'defaultValue' => $listConfig['time_range'],
+                    ],
+                ],
+            ],
+        ];
+
+        return $tabbedItems;
+    }
+
+    public function getIcon(): string
+    {
+        return '/bundles/news/img/entry.svg';
     }
 }
