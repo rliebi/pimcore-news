@@ -261,6 +261,23 @@
                     "invisible": false,
                     "visibleGridView": false,
                     "visibleSearch": false
+                  },
+                  {
+                    "fieldtype": "link",
+                    "name": "redirectLink",
+                    "title": "redirectLink",
+                    "tooltip": "",
+                    "mandatory": false,
+                    "noteditable": false,
+                    "index": false,
+                    "locked": false,
+                    "style": "",
+                    "permissions": null,
+                    "datatype": "data",
+                    "relationType": false,
+                    "invisible": false,
+                    "visibleGridView": false,
+                    "visibleSearch": false
                   }
                 ],
                 "name": "localizedfields",
