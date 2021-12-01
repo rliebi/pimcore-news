@@ -89,23 +89,28 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
         $view = $info->getEditable();
         $isPresetMode = false;
         $latest = $this->getDocumentEditable($info->getDocument(), 'checkbox', 'latest');
+        $includeSubCategories = $this->getDocumentEditable($info->getDocument(), 'checkbox', 'includeSubCategories')->getData();
 //        $showPagination = false && $this->getDocumentEditable($info->getDocument(), 'checkbox', 'show_pagination')->getData();
         $showPagination = false;
         $layout = $this->getDocumentEditable($info->getDocument(), 'select', 'layout')->getData();
-        $entryType = $this->getDocumentEditable($info->getDocument(), 'select', 'entryType');
+        $entryType = $this->getDocumentEditable($info->getDocument(), 'select', 'entryType')->getData();
+        $singleObjects = $this->getDocumentEditable($info->getDocument(), 'relations', 'singleObjects')->getData();
+        $categories = $this->getDocumentEditable($info->getDocument(), 'relations', 'categories')->getData();
+        $offset = $this->getDocumentEditable($info->getDocument(), 'numeric', 'offset')->getData();
+        $maxItems = $this->getDocumentEditable($info->getDocument(), 'numeric', 'max_items')->getData();
 
         //check if preset has been selected at first
 
 
             $querySettings = [];
-//            $querySettings['category'] = $fieldConfiguration['category']['value'];
-//            $querySettings['includeSubCategories'] = $fieldConfiguration['include_subcategories']['value'];
-//            $querySettings['singleObjects'] = $fieldConfiguration['single_objects']['value'];
-//            $querySettings['entryType'] = $fieldConfiguration['entry_types']['value'];
-//            $querySettings['offset'] = $fieldConfiguration['offset']['value'];
+            $querySettings['category'] = $categories;
+            $querySettings['includeSubCategories'] = $includeSubCategories;
+            $querySettings['singleObjects'] = $singleObjects;
+            $querySettings['entryType'] = $entryType;
+            $querySettings['offset'] = $offset;
 //
 //            //set limit
-//            $limit = $fieldConfiguration['max_items']['value'];
+            $limit = $maxItems;
 //
 //            //set pagination
 //            $calculatedItemsPerPage = $fieldConfiguration['paginate']['items_per_page']['value'];
@@ -114,7 +119,7 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
 //                $calculatedItemsPerPage = $limit;
 //            }
 //
-//            $querySettings['itemsPerPage'] = $calculatedItemsPerPage;
+            $querySettings['itemsPerPage'] = $limit;
 //
 //            //set paged
 //            $querySettings['page'] = (int)$info->getRequest()->query->get('page');
@@ -142,18 +147,20 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
                     ], ['-'], strtolower($layout));
             }
 //
-//            $event = new NewsBrickEvent($info, $querySettings);
-//            $this->eventDispatcher->dispatch($event, NewsEvents::NEWS_BRICK_QUERY_BUILD);
+            $event = new NewsBrickEvent($info, $querySettings);
+//            dump($querySettings);
+//            die();
+            $this->eventDispatcher->dispatch($event, NewsEvents::NEWS_BRICK_QUERY_BUILD);
 //
-//            $querySettings = $event->getQuerySettings();
-//            $additionalViewParams = $event->getAdditionalViewParams();
+            $querySettings = $event->getQuerySettings();
+            $additionalViewParams = $event->getAdditionalViewParams();
 //
             $newsObjects = DataObject\NewsEntry::getEntriesPaging($querySettings);
 //
             $subParams = [
                 'main_classes' => implode(' ', $mainClasses),
                 'is_preset_mode' => false,
-//                'category' => $ca,
+                'category' => $categories,
                 'show_pagination' => $showPagination,
 //                'entry_type' => $fieldConfiguration['entry_types']['value'],
                 'layout_name' => $layout,
@@ -332,10 +339,11 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
         ?Info $info
     ): EditableDialogBoxConfiguration {
         $tabbedItems = [];
-        $tabbedItems = $this->getSingleElement($tabbedItems);
+        $tabbedItems = $this->getGeneralTab($tabbedItems);
         $tabbedItems = $this->getCategoryTab($tabbedItems);
         $tabbedItems = $this->getPaginationTab($tabbedItems);
         $tabbedItems = $this->getSortingTab($tabbedItems);
+        $tabbedItems = $this->getSingleNewsTab($tabbedItems);
 
         $editableDialog = new EditableDialogBoxConfiguration();
         $editableDialog->setItems([
@@ -343,18 +351,31 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
             'items' => $tabbedItems,
         ]);
         $editableDialog->setReloadOnClose(true);
-        $editableDialog->setWidth(600);
-        $editableDialog->setHeight(450);
+        $editableDialog->setWidth(800);
+        $editableDialog->setHeight(650);
         return $editableDialog;
     }
 
-    public function getSingleElement(array $tabbedItems): array
+    public function getGeneralTab(array $tabbedItems): array
     {
         $listConfig = $this->configuration->getConfig('list');
+        $presetData = $this->getPresetsStore();
+        $presetElement = [];
+        if (count($presetData['store']) > 1) {
+            $presetElement = [
+                'type' => 'select',
+                'name' => 'presetElement',
+                'title' => $this->translator->trans('news.preset_element', [], 'admin'),
+                'config' => [
+                    'store' => $presetData['store']
+                ]
+            ];
+        }
         $tabbedItems[] = [
             'type' => 'panel',
             'title' => $this->translator->trans('news.entries', [], 'admin'),
             'items' => [
+                $presetElement,
                 [
                     'type' => 'checkbox',
                     'name' => 'latest',
@@ -398,7 +419,6 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
                         'types' => ['object'],
                         'subtypes' => ['object' => ['object']],
                         'classes' => ['NewsCategory'],
-                        'width' => '95%',
                     ],
                 ],
                 [
@@ -414,7 +434,27 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
 
         return $tabbedItems;
     }
-
+    public function getSingleNewsTab(array $tabbedItems): array {
+        $listConfig = $this->configuration->getConfig('list');
+        $tabbedItems[] = [
+            'type' => 'panel',
+            'title' => $this->translator->trans('news.single_objects', [], 'admin'),
+//            'title' => 'news.single_objects',
+            'items' => [
+                [
+                    'type' => 'relations',
+                    'name' => 'singleObjects',
+//                    'label' => $this->translator->trans('news.show_pagination', [], 'admin'),
+                    'label' => 'news.single_objects',
+                    'config' => [
+                        'disabled' => true,
+                        'defaultValue' => null,
+                    ],
+                ],
+            ]
+        ];
+        return $tabbedItems;
+    }
     public function getPaginationTab(array $tabbedItems): array
     {
         $listConfig = $this->configuration->getConfig('list');
@@ -425,7 +465,7 @@ class News extends AbstractTemplateAreabrick implements EditableDialogBoxInterfa
             'items' => [
                 [
                     'type' => 'text',
-                    'label' => 'test'
+                    'html' => 'test'
                 ],
                 [
                     'type' => 'checkbox',
